@@ -1,9 +1,9 @@
 <launch>
    <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan">
-      <param name="scan_height" value="5"/>
+      <param name="scan_height" value="1"/> <!-- was 5 -->
       <param name="scan_time" value="0.033"/>
-      <param name="range_min" value="0.55"/>
-      <param name="range_max" value="2.75"/>
+      <param name="range_min" value="0.25"/> <!-- was 0.55 -->
+      <param name="range_max" value="2.75"/> <!-- was 2.75 -->
       <param name="output_frame_id" value="camera_depth_frame"/>
       <remap from="image" to="/camera/depth/image_raw"/>
       <remap from="camera_info" to="/camera/depth/camera_info"/>
