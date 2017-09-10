@@ -14,3 +14,6 @@ Use docker to cross compile EV3 code (need to include ev3dev and ros_lib)
 
 ...
 
+
+
+rosrun rosserial_python serial_node.py tcp

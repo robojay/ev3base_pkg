@@ -14,12 +14,11 @@
 #include <limits.h>
 #include <string>
 #include <chrono>
+#include <ev3base_pkg/Encoder.h>
 #include "ev3dev.h"
 #include "ev3geometry.h"
 #include "ev3base.h"
 
-Ev3Base ev3Base;
-ros::NodeHandle nh;
 
 
 Ev3Base::Ev3Base() {
@@ -30,38 +29,11 @@ Ev3Base::Ev3Base() {
 	leftMotor.reset();
 	rightMotor.reset();
 
-	double countsPerRotation = leftMotor.count_per_rot();
-	distancePerCountM = WheelCircumferenceM / countsPerRotation;
+	//double countsPerRotation = leftMotor.count_per_rot();
+	//distancePerCountM = WheelCircumferenceM / countsPerRotation;
 
-	maxSpeedMetersPerSecond = leftMotor.max_speed() * distancePerCountM;
+	maxSpeedMetersPerSecond = leftMotor.max_speed() * DistancePerCountM;
 
-	encoders.dLeft = 0;
-	encoders.dRight = 0;
-}
-
-
-
-void Ev3Base::updateEncoders() {
-
-	static bool firstPass = true;
-	static int lastLeft;
-	static int lastRight;
-
-
-	int left = leftMotor.position();
-	int right = rightMotor.position();
-
-
-	if (firstPass) {
-		firstPass = false;
-	}
-	else {
-		encoders.dLeft = left - lastLeft;
-		encoders.dRight = right - lastRight;
-	}
-
-	lastLeft = left;
-	lastRight = right;
 }
 
 
@@ -111,8 +83,8 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 		// (meters / second) * (counts/ meter) = counts / second
 
 		double cmdLeft, cmdRight;
-		cmdLeft = vl / ev3Base.distancePerCountM;
-		cmdRight = vr / ev3Base.distancePerCountM;
+		cmdLeft = vl / DistancePerCountM;
+		cmdRight = vr / DistancePerCountM;
 
 		ev3Base.leftMotor.set_speed_sp((int)cmdLeft);
 		ev3Base.rightMotor.set_speed_sp((int)cmdRight);
@@ -125,9 +97,12 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 }
 
 
-void publishOdometry() {
-	ros::Time now = nh.now();
+void publishEncoders() {
 
+	encoderMessage.header.stamp = nh.now();
+	encoderMessage.count[Left] = ev3Base.leftMotor.position();
+	encoderMessage.count[Right] = ev3Base.rightMotor.position();
+	encoders.publish(&encoderMessage);
 } 
 
 
@@ -142,15 +117,14 @@ int main() {
 	odometryTimer = now;
 
 	nh.initNode(RosSrvrIp);
-	//nh.advertise(odometry);
+	nh.advertise(encoders);
 
 	nh.subscribe(twist);
 	while(1) {
 		now = std::chrono::steady_clock::now();
 		if (now >= odometryTimer) {
 			odometryTimer = now + OdometryTime;
-			ev3Base.updateEncoders();
-			publishOdometry();
+			publishEncoders();
 		}
 		nh.spinOnce();
 	}

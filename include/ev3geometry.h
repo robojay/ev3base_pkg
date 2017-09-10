@@ -7,4 +7,8 @@ const double WheelSpacingM = 87.5 / 1000.0;
 const double WheelDiameterM = 67.0 / 1000.0;
 const double WheelCircumferenceM = M_PI * WheelDiameterM;
 
+const int CountsPerRotation = 360;
+
+const double DistancePerCountM = WheelCircumferenceM / CountsPerRotation;
+
 #endif
