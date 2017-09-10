@@ -1,0 +1,12 @@
+Random Notes
+
+EV3 running ev3dev
+
+Using rosserial_embeddedlinux built from source for EV3 to ROS communication
+
+Using ev3dev-lang for C++ access to EV3 hardware
+
+Use docker to cross compile EV3 code (need to include ev3dev and ros_lib)
+
+...
+
