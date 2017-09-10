@@ -1,0 +1,2 @@
+
+-DCATKIN_DEVEL_PREFIX=/home/euclid/GitHub/ev3Base_pkg/devel -DCMAKE_INSTALL_PREFIX=/home/euclid/GitHub/ev3Base_pkg/install -G Unix Makefiles
