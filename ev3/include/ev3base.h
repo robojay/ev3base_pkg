@@ -3,10 +3,13 @@
 
 
 char RosSrvrIp[] = "192.168.8.50";
-
 const std::chrono::milliseconds OdometryTime(100);
-
 char EncodersTopic[] = "/ev3/encoders";
+
+
+//std_msgs::Int32 encodersMessage[2];
+//ros::Publisher encoders(EncodersTopic, &encodersMessage);
+
 
 class Ev3Base {
 	public:

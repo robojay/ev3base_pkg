@@ -18,11 +18,9 @@
 #include "ev3geometry.h"
 #include "ev3base.h"
 
-
 Ev3Base ev3Base;
+ros::NodeHandle nh;
 
-std_msgs::Int32 encodersMessage[2];
-ros::Publisher encoders(EncodersTopic, &encodersMessage);
 
 Ev3Base::Ev3Base() {
 
@@ -43,7 +41,7 @@ Ev3Base::Ev3Base() {
 
 
 
-void updateEncoders() {
+void Ev3Base::updateEncoders() {
 
 	static bool firstPass = true;
 	static int lastLeft;
@@ -87,8 +85,8 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 		vc = twistMessage.linear.x;
 		wc = twistMessage.angular.z;
 
-		vr = ((2.0 * vc) + (wc * ev3Base.WheelSpacingM)) / 2.0;
-		vl = ((2.0 * vc) - (wc * ev3Base.WheelSpacingM)) / 2.0;
+		vr = ((2.0 * vc) + (wc * WheelSpacingM)) / 2.0;
+		vl = ((2.0 * vc) - (wc * WheelSpacingM)) / 2.0;
 
 		// clamp to limits
 
@@ -128,36 +126,13 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 
 
 void publishOdometry() {
-	ros::Time now = ros::Time::now();
-
-	odometryMessage.header.stamp = now;
-	odometryMessage.header.frame_id = OdomFrameId;
-	odometryMessage.child_frame_id = BaseFrameId;
-
-	odometryMessage.pose.pose.position.x = ev3Base.pose.x;
-	odometryMessage.pose.pose.position.y = ev3Base.pose.y;
-	odometryMessage.pose.pose.position.z = 0.0;
-	odometryMessage.pose.pose.orientation = odomQuaternion;
-	odometryMessage.twist.twist.linear.x = ev3Base.velocity.x;
-	odometryMessage.twist.twist.linear.y = ev3Base.velocity.y;			
-	odometryMessage.twist.twist.angular.z = ev3Base.velocity.theta;
-
-	odometry.publish(odometryMessage);
-
-	odometryTransformMessage.header.stamp = now;
-	odometryTransformMessage.header.frame_id = OdomFrameId;
-	odometryTransformMessage.child_frame_id = BaseFrameId;
-	odometryTransformMessage.transform.translation.x = ev3Base.pose.x;
-	odometryTransformMessage.transform.translation.y = ev3Base.pose.y;
-	odometryTransformMessage.transform.translation.z = 0.0;
-	odometryTransformMessage.transform.rotation = odomQuaternion;
-
-	odometryTransform.sendTransform(odometryTransformMessage);
+	ros::Time now = nh.now();
 
 } 
 
+
+
 int main() {
-	ros::NodeHandle nh;
 	ros::Subscriber<geometry_msgs::Twist> twist("/cmd_vel_mux/input/teleop", twistCallback);
 
 	std::chrono::time_point<std::chrono::steady_clock> now;
@@ -167,14 +142,14 @@ int main() {
 	odometryTimer = now;
 
 	nh.initNode(RosSrvrIp);
-	nh.advertise(odometry);
+	//nh.advertise(odometry);
 
 	nh.subscribe(twist);
 	while(1) {
 		now = std::chrono::steady_clock::now();
 		if (now >= odometryTimer) {
 			odometryTimer = now + OdometryTime;
-			ev3Base.updateOdometry();
+			ev3Base.updateEncoders();
 			publishOdometry();
 		}
 		nh.spinOnce();
