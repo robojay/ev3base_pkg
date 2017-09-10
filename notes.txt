@@ -4,6 +4,8 @@ EV3 running ev3dev
 
 Using rosserial_embeddedlinux built from source for EV3 to ROS communication
 
+rosrun rosserial_embeddedlinux make_libraries.py /home/euclid/GitHub/ev3base_pkg/ev3/include
+
 Using ev3dev-lang for C++ access to EV3 hardware
 
 Use docker to cross compile EV3 code (need to include ev3dev and ros_lib)

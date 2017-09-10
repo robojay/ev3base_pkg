@@ -361,8 +361,8 @@ namespace ros {
       }
 
       /* Register a new Service Server */
-      template<typename MReq, typename MRes, typename ObjT>
-      bool advertiseService(ServiceServer<MReq,MRes,ObjT>& srv){
+      template<typename MReq, typename MRes>
+      bool advertiseService(ServiceServer<MReq,MRes>& srv){
         bool v = advertise(srv.pub);
         for(int i = 0; i < MAX_SUBSCRIBERS; i++){
           if(subscribers[i] == 0){ // empty slot
@@ -494,53 +494,44 @@ namespace ros {
         rosserial_msgs::RequestParamRequest req;
         req.name  = (char*)name;
         publish(TopicInfo::ID_PARAMETER_REQUEST, &req);
-        uint32_t end_time = hardware_.time() + time_out;
+        uint16_t end_time = hardware_.time() + time_out;
         while(!param_recieved ){
           spinOnce();
-          if (hardware_.time() > end_time) {
-            logwarn("Failed to get param: timeout expired");
-            return false;
-          }
+          if (hardware_.time() > end_time) return false;
         }
         return true;
       }
 
     public:
-      bool getParam(const char* name, int* param, int length =1, int timeout = 1000){
-        if (requestParam(name, timeout) ){
+      bool getParam(const char* name, int* param, int length =1){
+        if (requestParam(name) ){
           if (length == req_param_resp.ints_length){
             //copy it over
             for(int i=0; i<length; i++)
               param[i] = req_param_resp.ints[i];
             return true;
-          } else {
-            logwarn("Failed to get param: length mismatch");
           }
         }
         return false;
       }
-      bool getParam(const char* name, float* param, int length=1, int timeout = 1000){
-        if (requestParam(name, timeout) ){
+      bool getParam(const char* name, float* param, int length=1){
+        if (requestParam(name) ){
           if (length == req_param_resp.floats_length){
             //copy it over
             for(int i=0; i<length; i++)
               param[i] = req_param_resp.floats[i];
             return true;
-          } else {
-            logwarn("Failed to get param: length mismatch");
           }
         }
         return false;
       }
-      bool getParam(const char* name, char** param, int length=1, int timeout = 1000){
-        if (requestParam(name, timeout) ){
+      bool getParam(const char* name, char** param, int length=1){
+        if (requestParam(name) ){
           if (length == req_param_resp.strings_length){
             //copy it over
             for(int i=0; i<length; i++)
               strcpy(param[i],req_param_resp.strings[i]);
             return true;
-          } else {
-            logwarn("Failed to get param: length mismatch");
           }
         }
         return false;
