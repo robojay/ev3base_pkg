@@ -1,6 +1,11 @@
 <launch>
 
 <!-- Starting EV3 Base node -->
+
+   <node pkg="rosserial_python" type="serial_node.py" name="rosserial" output="screen">
+     <param name="port" value="tcp" />
+   </node>
+
    <rosparam file="$(find ev3base_pkg)/config/ev3base.yaml" command="load"/>
 
    <node name="ev3base" pkg="ev3base_pkg" type="ev3base_node" output="screen" />
