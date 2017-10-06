@@ -2,6 +2,7 @@
 #include <std_msgs/String.h>
 #include <stdio.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Quaternion.h>
 #include <geometry_msgs/Vector3.h>
 #include <std_msgs/Int16.h>
@@ -86,8 +87,8 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 		cmdLeft = vl / DistancePerCountM;
 		cmdRight = vr / DistancePerCountM;
 
-		ev3Base.leftMotor.set_speed_sp((int)cmdLeft);
-		ev3Base.rightMotor.set_speed_sp((int)cmdRight);
+		ev3Base.leftMotor.set_speed_sp((int)round(cmdLeft));
+		ev3Base.rightMotor.set_speed_sp((int)round(cmdRight));
 		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_forever);
 		ev3Base.rightMotor.set_command(ev3dev::motor::command_run_forever);
 
@@ -96,6 +97,45 @@ void twistCallback(const geometry_msgs::Twist& twistMessage) {
 	}
 }
 
+void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
+	// will move relative forward/back based on X
+	// or will pivot relative based on Theta
+	// X will take priority
+	// Theta will be examined if X = 0
+	// motors will be stopped first
+	// this can be used to stop motors by sending all zeros
+	// Y contains the speed
+
+	ev3Base.leftMotor.set_command(ev3dev::motor::command_stop);
+	ev3Base.rightMotor.set_command(ev3dev::motor::command_stop);
+
+	double cmd;
+	double speed;
+
+	if (relativeMessage.x != 0) {
+		cmd = relativeMessage.x / DistancePerCountM;
+		speed = relativeMessage.y / DistancePerCountM;
+		ev3Base.leftMotor.set_speed_sp(speed);
+		ev3Base.rightMotor.set_speed_sp(speed);
+		ev3Base.leftMotor.set_position_sp((int)round(cmd));
+		ev3Base.rightMotor.set_position_sp((int)round(cmd));
+		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+		ev3Base.rightMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+	}
+	else if (relativeMessage.theta != 0) {
+
+		cmd = ((relativeMessage.theta * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
+		speed = relativeMessage.y / DistancePerCountM;
+		ev3Base.leftMotor.set_speed_sp(speed);
+		ev3Base.rightMotor.set_speed_sp(speed);
+		ev3Base.leftMotor.set_position_sp(-(int)round(cmd));
+		ev3Base.rightMotor.set_position_sp((int)round(cmd));
+		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+		ev3Base.rightMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+
+	}
+
+}
 
 void publishEncoders() {
 
@@ -109,6 +149,7 @@ void publishEncoders() {
 
 int main() {
 	ros::Subscriber<geometry_msgs::Twist> twist("/cmd_vel_mux/input/teleop", twistCallback);
+	ros::Subscriber<geometry_msgs::Pose2D> relativeMove("/cmd_relative_move", relativeMoveCallback);
 
 	std::chrono::time_point<std::chrono::steady_clock> now;
 	std::chrono::time_point<std::chrono::steady_clock> odometryTimer;
@@ -120,6 +161,8 @@ int main() {
 	nh.advertise(encoders);
 
 	nh.subscribe(twist);
+	nh.subscribe(relativeMove);
+
 	while(1) {
 		now = std::chrono::steady_clock::now();
 		if (now >= odometryTimer) {
