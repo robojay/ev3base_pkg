@@ -15,16 +15,18 @@
 
 Encoders::Encoders() {
 	encodersTopic = "/ev3/encoders";
-	odometryTopic = "/odom";
+	odometryTopic = "odom";
 
 	odometryFrameId = "odom";
 	baseFrameId = "base_link";
 
 	try {
-		nh.getParam("encoders_topic", encodersTopic);
-		nh.getParam("odometry_topic", odometryTopic);
-		nh.getParam("odometry_frame_id", odometryFrameId);
-		nh.getParam("base_frame_id", baseFrameId);
+		nh.getParam("/ev3base/encoders_topic", encodersTopic);
+		nh.getParam("ev3base/odometry_topic", odometryTopic);
+		ROS_INFO_STREAM("Odometry Topic: " << odometryTopic);
+		nh.getParam("ev3base/odometry_frame_id", odometryFrameId);
+		ROS_INFO_STREAM("Odometry Frame Id: " << odometryFrameId);
+		nh.getParam("/ev3base/base_frame_id", baseFrameId);
 		ROS_INFO("Parameters loaded");
 	}
 	catch(int e) {
@@ -55,15 +57,17 @@ void Encoders::encodersCallback(const ev3base_pkg::Encoder& encoderMessage) {
 	int left = encoderMessage.count[0];
 	int right = encoderMessage.count[1];
 
+	// printf("Encoder: [%d, %d]\n", left, right);
+
 	if ((lastEncoderTime != 0.0) && (dt > 0.0)) {
 		double dLeft = left - lastLeftCount;
 		double dRight = right - lastRightCount;
 
-		double leftM = dLeft * DistancePerCountM;
-		double rightM = dRight * DistancePerCountM;
+		double leftMM = dLeft * DistancePerCountMM;
+		double rightMM = dRight * DistancePerCountMM;
 
-		double dDistance = (rightM + leftM) / 2.0;
-		double dTheta = (rightM - leftM) / WheelSpacingM;
+		double dDistance = (rightMM + leftMM) / 2.0;
+		double dTheta = (rightMM - leftMM) / WheelSpacingMM;
 
 		double dX = dDistance * cos(pose.theta);
 		double dY = dDistance * sin(pose.theta);
@@ -86,21 +90,37 @@ void Encoders::encodersCallback(const ev3base_pkg::Encoder& encoderMessage) {
 		odometryMessage.header.frame_id = odometryFrameId;
 		odometryMessage.child_frame_id = baseFrameId;
 
-		odometryMessage.pose.pose.position.x = pose.x;
-		odometryMessage.pose.pose.position.y = pose.y;
+		odometryMessage.pose.pose.position.x = pose.x / 1000.0;
+		odometryMessage.pose.pose.position.y = pose.y / 1000.0;
 		odometryMessage.pose.pose.position.z = 0.0;
 		odometryMessage.pose.pose.orientation = odomQuaternion;
-		odometryMessage.twist.twist.linear.x = velocity.x;
-		odometryMessage.twist.twist.linear.y = velocity.y;			
+		odometryMessage.twist.twist.linear.x = velocity.x / 1000.0;
+		odometryMessage.twist.twist.linear.y = velocity.y / 1000.0;			
 		odometryMessage.twist.twist.angular.z = velocity.theta;
 
+
+		// Covariance - not accurate yet
+		odometryMessage.pose.covariance = { 1.0e-3, 0.0, 0.0, 0.0, 0.0, 0.0,
+						       0.0, 1.0e-3, 0.0, 0.0, 0.0, 0.0,
+						       0.0, 0.0, 1.0e6, 0.0, 0.0, 0.0,
+						       0.0, 0.0, 0.0, 1.0e6, 0.0, 0.0,
+						       0.0, 0.0, 0.0, 0.0, 1.0e6, 0.0,
+						       0.0, 0.0, 0.0, 0.0, 0.0, 1.0e3 };
+
+		odometryMessage.twist.covariance = { 1.0e-3, 0.0, 0.0, 0.0, 0.0, 0.0,
+						       0.0, 1.0e-3, 0.0, 0.0, 0.0, 0.0,
+						       0.0, 0.0, 1.0e6, 0.0, 0.0, 0.0,
+						       0.0, 0.0, 0.0, 1.0e6, 0.0, 0.0,
+						       0.0, 0.0, 0.0, 0.0, 1.0e6, 0.0,
+						       0.0, 0.0, 0.0, 0.0, 0.0, 1.0e3 };
+ 
 		odometry.publish(odometryMessage);
 
 		odometryTransformMessage.header.stamp = encoderMessage.header.stamp;
 		odometryTransformMessage.header.frame_id = odometryFrameId;
 		odometryTransformMessage.child_frame_id = baseFrameId;
-		odometryTransformMessage.transform.translation.x = pose.x;
-		odometryTransformMessage.transform.translation.y = pose.y;
+		odometryTransformMessage.transform.translation.x = pose.x / 1000.0;
+		odometryTransformMessage.transform.translation.y = pose.y / 1000.0;
 		odometryTransformMessage.transform.translation.z = 0.0;
 		odometryTransformMessage.transform.rotation = odomQuaternion;
 

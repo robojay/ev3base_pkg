@@ -6,7 +6,7 @@
      <param name="port" value="tcp" />
    </node>
 
-   <rosparam file="$(find ev3base_pkg)/config/ev3base.yaml" command="load"/>
+   <!-- rosparam file="$(find ev3base_pkg)/config/ev3base.yaml" command="load"/ -->
 
    <node name="ev3base" pkg="ev3base_pkg" type="ev3base_node" output="screen" />
 

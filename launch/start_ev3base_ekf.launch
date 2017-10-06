@@ -1,0 +1,56 @@
+<launch>
+
+<!-- Starting EV3 Base node -->
+
+   <node pkg="rosserial_python" type="serial_node.py" name="rosserial" output="screen">
+     <param name="port" value="tcp" />
+   </node>
+
+   <!-- rosparam file="$(find ev3base_pkg)/config/ev3base.yaml" command="load"/ -->
+
+   <node name="ev3base" pkg="ev3base_pkg" type="ev3base_node" output="screen" >
+     <param name="odometry_topic" value="/ev3base/odom" />
+     <param name="odometry_frame_id" value="ev3base_odom" />
+   </node>
+
+  <node name="imu_filter_complementary" pkg="imu_complementary_filter" type="complementary_filter_node">
+    <remap from="imu/data_raw" to="/camera/imu/fused_data_raw" />
+    <remap from="imu/data" to="/imu/complementary/data" />
+    <param name="use_mag" value="false" />
+    <param name="publish_tf" value="false" />
+    <param name="fixed_frame" value="imu_complementary_frame" />
+    <param name="orientation_stddev" value="0.03" />
+  </node>
+
+  <node name="imu_filter_madgwick" pkg="imu_filter_madgwick" type="imu_filter_node">
+    <remap from="imu/data_raw" to="/camera/imu/fused_data_raw" />
+    <remap from="imu/data" to="/imu/madgwick/data" />
+    <param name="use_mag" value="false" />
+    <param name="publish_tf" value="false" />
+    <param name="fixed_frame" value="imu_madgwick_frame" />
+    <param name="orientation_stddev" value="0.03" />
+  </node>
+
+   <!-- The odometry estimator -->
+   <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+     <remap from="imu_data" to="/camera/imu/data_raw"/>
+     <remap from="odom" to="/ev3base/odom" />
+     <param name="freq" value="10.0"/>
+     <param name="sensor_timeout" value="1.0"/>
+     <param name="publish_tf" value="true"/>
+     <param name="odom_used" value="true"/>
+     <param name="imu_used" value="true"/>
+     <param name="vo_used" value="false"/>
+     <param name="output_frame" value="odom"/>
+   </node>
+
+   <node pkg="tf" type="static_transform_publisher" name="base_to_camera_publisher" args="0.045 0.0 0.142 0 0 0 1 base_link camera_link 100" />
+
+   <node pkg="tf" type="static_transform_publisher" name="map_to_odom_publisher" args="0.0 0.0 0.0 0 0 0 1 map odom 100" />
+   <node pkg="tf" type="static_transform_publisher" name="map_to_ev3base_odom_publisher" args="0.0 0.0 0.0 0 0 0 1 map ev3base_odom 100" />
+   <!-- node pkg="tf" type="static_transform_publisher" name="map_to_footprint_publisher" args="0.0 0.0 0.0 0 0 0 1 map base_footprint 100" / -->
+   <!-- node pkg="tf" type="static_transform_publisher" name="footprint_to_base_publisher" args="0.0 0.0 0.03 0 0 0 1 base_footprint base_link 100" / -->
+   <!-- node pkg="tf" type="static_transform_publisher" name="base_to_camera_publisher" args="0.1175 0.0 0.1050 0 0 0 1 base_link camera_link 100" / -->
+
+
+</launch>

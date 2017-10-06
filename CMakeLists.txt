@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ev3base_pkg)
 
+add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -39,6 +40,8 @@ include_directories(
 
 
 add_executable(ev3base_node src/ev3base_node.cpp)
+
+add_dependencies(ev3base_node ev3base_pkg_generate_messages_cpp) 
 
 target_link_libraries(ev3base_node
    ${catkin_LIBRARIES}
