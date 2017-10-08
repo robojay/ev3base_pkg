@@ -4,11 +4,15 @@
 char RosSrvrIp[] = "192.168.8.50";
 const std::chrono::milliseconds OdometryTime(20);
 char EncodersTopic[] = "/ev3/encoders";
+char MotorStatesTopic[] = "/ev3/motorStates";
 
 ros::NodeHandle nh;
 
 ev3base_pkg::Encoder encoderMessage;
 ros::Publisher encoders(EncodersTopic, &encoderMessage);
+
+ev3base_pkg::MotorState motorStateMessage;
+ros::Publisher motorStates(MotorStatesTopic, &motorStateMessage);
 
 const int Left = 0;
 const int Right = 1;
@@ -22,6 +26,9 @@ class Ev3Base {
 		double maxSpeedMetersPerSecond;
 		ev3dev::large_motor leftMotor;
 		ev3dev::large_motor rightMotor;
+
+		float relativeMoveLinearMetersPerSecond;
+		float relativeMoveAngularRadiansPerSecond;
 
 		Ev3Base();
 };

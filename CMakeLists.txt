@@ -18,6 +18,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_message_files(
    FILES
    Encoder.msg
+   MotorState.msg
 )
 
 
