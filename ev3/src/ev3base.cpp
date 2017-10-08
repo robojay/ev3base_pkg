@@ -132,8 +132,15 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 	if (relativeMessage.x != 0) {
 		cmd = relativeMessage.x / DistancePerCountM;
 		speed = ev3Base.relativeMoveLinearMetersPerSecond / DistancePerCountM;
-		ev3Base.leftMotor.set_speed_sp(speed);
-		ev3Base.rightMotor.set_speed_sp(speed);
+		double max = ev3Base.maxSpeedMetersPerSecond / DistancePerCountM;
+		if (speed > max) {
+			speed = max;
+		}
+		else if (speed < -max) {
+			speed = -max;
+		}
+		ev3Base.leftMotor.set_speed_sp((int)round(speed));
+		ev3Base.rightMotor.set_speed_sp((int)round(speed));
 		ev3Base.leftMotor.set_position_sp((int)round(cmd));
 		ev3Base.rightMotor.set_position_sp((int)round(cmd));
 		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
@@ -143,8 +150,15 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 
 		cmd = ((relativeMessage.theta * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
 		speed = ((ev3Base.relativeMoveAngularRadiansPerSecond * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
-		ev3Base.leftMotor.set_speed_sp(speed);
-		ev3Base.rightMotor.set_speed_sp(speed);
+		double max = ev3Base.maxSpeedMetersPerSecond / 1000.0 / DistancePerCountM;
+		if (speed > max) {
+			speed = max;
+		}
+		else if (speed < -max) {
+			speed = -max;
+		}
+		ev3Base.leftMotor.set_speed_sp((int)round(speed));
+		ev3Base.rightMotor.set_speed_sp((int)round(speed));
 		ev3Base.leftMotor.set_position_sp(-(int)round(cmd));
 		ev3Base.rightMotor.set_position_sp((int)round(cmd));
 		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
@@ -165,8 +179,32 @@ void publishEncoders() {
 
 void publishMotorStates() {
 	motorStateMessage.header.stamp = nh.now();
-	motorStateMessage.state[Left] = ev3Base.leftMotor.state();
-	motorStateMessage.state[Right] = ev3Base.rightMotor.state();
+
+	if (ev3Base.leftMotor.state().empty()) {
+		ev3Base.leftMotorStatus = "idle";
+	}
+	else {
+		ev3Base.leftMotorStatus = "not_idle";
+
+		//for(auto s : ev3Base.leftMotor.state()) {
+		//	ev3Base.leftMotorStatus = "foo";
+		//} 
+	}
+
+	if (ev3Base.rightMotor.state().empty()) {
+		ev3Base.rightMotorStatus = "idle";
+	}
+	else {
+		ev3Base.rightMotorStatus = "not_idle";
+
+		//for(auto s : ev3Base.leftMotor.state()) {
+		//	ev3Base.leftMotorStatus = "foo";
+		//} 
+	}
+
+	motorStateMessage.state[Left] = (char *)ev3Base.leftMotorStatus.c_str();
+	motorStateMessage.state[Right] = (char *)ev3Base.rightMotorStatus.c_str();
+
 	motorStates.publish(&motorStateMessage);
 }
 
@@ -191,6 +229,9 @@ int main() {
 	nh.subscribe(relativeMove);
 	nh.subscribe(relativeLinear);
 	nh.subscribe(relativeAngular);
+
+	ev3Base.leftMotor.set_command(ev3dev::motor::command_stop);
+	ev3Base.rightMotor.set_command(ev3dev::motor::command_stop);
 
 	while(1) {
 		now = std::chrono::steady_clock::now();

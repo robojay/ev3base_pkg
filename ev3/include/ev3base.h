@@ -2,7 +2,7 @@
 #define _EV3BASE_HPP_
 
 char RosSrvrIp[] = "192.168.8.50";
-const std::chrono::milliseconds OdometryTime(20);
+const std::chrono::milliseconds OdometryTime(100);
 char EncodersTopic[] = "/ev3/encoders";
 char MotorStatesTopic[] = "/ev3/motorStates";
 
@@ -29,6 +29,10 @@ class Ev3Base {
 
 		float relativeMoveLinearMetersPerSecond;
 		float relativeMoveAngularRadiansPerSecond;
+
+		std::string leftMotorStatus;
+		std::string rightMotorStatus;
+
 
 		Ev3Base();
 };
