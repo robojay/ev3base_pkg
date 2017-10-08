@@ -66,14 +66,15 @@ namespace kobuki_msgs
       *(outbuffer + offset + 3) = (this->udid[i] >> (8 * 3)) & 0xFF;
       offset += sizeof(this->udid[i]);
       }
-      *(outbuffer + offset + 0) = (this->features >> (8 * 0)) & 0xFF;
-      *(outbuffer + offset + 1) = (this->features >> (8 * 1)) & 0xFF;
-      *(outbuffer + offset + 2) = (this->features >> (8 * 2)) & 0xFF;
-      *(outbuffer + offset + 3) = (this->features >> (8 * 3)) & 0xFF;
-      *(outbuffer + offset + 4) = (this->features >> (8 * 4)) & 0xFF;
-      *(outbuffer + offset + 5) = (this->features >> (8 * 5)) & 0xFF;
-      *(outbuffer + offset + 6) = (this->features >> (8 * 6)) & 0xFF;
-      *(outbuffer + offset + 7) = (this->features >> (8 * 7)) & 0xFF;
+      union {
+        uint64_t real;
+        uint32_t base;
+      } u_features;
+      u_features.real = this->features;
+      *(outbuffer + offset + 0) = (u_features.base >> (8 * 0)) & 0xFF;
+      *(outbuffer + offset + 1) = (u_features.base >> (8 * 1)) & 0xFF;
+      *(outbuffer + offset + 2) = (u_features.base >> (8 * 2)) & 0xFF;
+      *(outbuffer + offset + 3) = (u_features.base >> (8 * 3)) & 0xFF;
       offset += sizeof(this->features);
       return offset;
     }
@@ -124,14 +125,16 @@ namespace kobuki_msgs
       offset += sizeof(this->st_udid);
         memcpy( &(this->udid[i]), &(this->st_udid), sizeof(uint32_t));
       }
-      this->features =  ((uint64_t) (*(inbuffer + offset)));
-      this->features |= ((uint64_t) (*(inbuffer + offset + 1))) << (8 * 1);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 2))) << (8 * 2);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 3))) << (8 * 3);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 4))) << (8 * 4);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 5))) << (8 * 5);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 6))) << (8 * 6);
-      this->features |= ((uint64_t) (*(inbuffer + offset + 7))) << (8 * 7);
+      union {
+        uint64_t real;
+        uint32_t base;
+      } u_features;
+      u_features.base = 0;
+      u_features.base |= ((uint32_t) (*(inbuffer + offset + 0))) << (8 * 0);
+      u_features.base |= ((uint32_t) (*(inbuffer + offset + 1))) << (8 * 1);
+      u_features.base |= ((uint32_t) (*(inbuffer + offset + 2))) << (8 * 2);
+      u_features.base |= ((uint32_t) (*(inbuffer + offset + 3))) << (8 * 3);
+      this->features = u_features.real;
       offset += sizeof(this->features);
      return offset;
     }
