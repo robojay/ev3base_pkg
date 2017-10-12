@@ -24,6 +24,7 @@ class Ev3Base {
 
 		//double distancePerCountM;
 		double maxSpeedMetersPerSecond;
+		double maxSpeedMMPerSecond;
 		ev3dev::large_motor leftMotor;
 		ev3dev::large_motor rightMotor;
 
@@ -33,8 +34,19 @@ class Ev3Base {
 		std::string leftMotorStatus;
 		std::string rightMotorStatus;
 
+		bool relativeMove;
+
+		int minSpeedCountsLeft;
+		int minSpeedCountsRight;
+		int maxSpeedCountsLeft;
+		int maxSpeedCountsRight;
+		int goalCounts;
+		int startCounts;
+		int rampUpCount;
+		int rampDownCount;
 
 		Ev3Base();
+		void motorHandler();
 };
 
 Ev3Base ev3Base;

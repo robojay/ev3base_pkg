@@ -36,13 +36,125 @@ Ev3Base::Ev3Base() {
 	//double countsPerRotation = leftMotor.count_per_rot();
 	//distancePerCountM = WheelCircumferenceM / countsPerRotation;
 
-	maxSpeedMetersPerSecond = leftMotor.max_speed() * DistancePerCountM;
+	maxSpeedMetersPerSecond = leftMotor.max_speed() * DistancePerCountM;  // this is wrong!
+
+	maxSpeedMMPerSecond = 0.9 * leftMotor.max_speed() * DistanceMMtoCountsLeft;
 
 	relativeMoveLinearMetersPerSecond = 0.0;
 	relativeMoveAngularRadiansPerSecond = 0.0;
 
+	leftMotor.set_command(ev3dev::motor::command_stop);
+	rightMotor.set_command(ev3dev::motor::command_stop);
+	leftMotor.set_stop_action(ev3dev::motor::stop_action_hold);
+	rightMotor.set_stop_action(ev3dev::motor::stop_action_hold);
+
+	motorsRunning = false;
+	motorsRelative = false;
+
+
 }
 
+Ev3Base::motorHandler() {
+	enum MotorState {idle, rampUp, hold, rampDown, stop};
+	static MotorState motorState = stop;
+
+	bool forwards = (startCounts > goalCounts) ? false : true;
+	int position;
+	int deltaUp;
+	int deltaDown;
+
+	if (forwards) {
+		position = leftMotor.position() - startCounts;
+		deltaUp = rampUpCount - startCounts;
+		deltaDown = goalCounts - rampDownCount;
+	}
+	else {
+		position = leftMotor.position() - startCounts;
+		deltaUp = rampUpCount - startCounts;
+		deltaDown = goalCounts - rampDownCount;		
+	}
+
+	switch(motorState) {
+		case idle:
+			if (relativeMove) {
+				leftMotor.set_speed_sp(ev3Base.minSpeedCountsLeft);
+				rightMotor.set_speed_sp(ev3Base.minSpeedCountsRight);
+				motorState = rampUp;
+			}
+			else {
+				motorState = idle;
+			}
+		case rampUp:
+			if (forwards) {
+				if (position < rampUpCount) {
+					int leftSpeed = (((maxSpeedCountsLeft - minSpeedCountsLeft) /
+					                (rampUpCount - startCounts)) * position) + 
+									minSpeedCountsLeft;
+					int rightSpeed = (((maxSpeedCountsRight - minSpeedCountsRight) /
+					                (rampUpCount - startCounts)) * position) + 
+									minSpeedCountsRight;
+
+					leftMotor.set_speed_sp(leftSpeed);
+					rightMotor.set_speed_sp(rightSpeed);
+					motorState = rampUp;
+				}
+				else {
+					leftMotor.set_speed_sp(maxSpeedCountsLeft);
+					rightMotor.set_speed_sp(maxSpeedCountsRight);
+					motorState = hold;
+				}
+			}
+			else {
+				if (position > rampUpCount) {
+					int leftSpeed = (((maxSpeedCountsLeft - minSpeedCountsLeft) /
+					                (-rampUpCount + startCounts)) * position) + 
+									minSpeedCountsLeft;
+					int rightSpeed = (((maxSpeedCountsRight - minSpeedCountsRight) /
+					                (-rampUpCount + startCounts)) * position) + 
+									minSpeedCountsRight;
+
+					leftMotor.set_speed_sp(leftSpeed);
+					rightMotor.set_speed_sp(rightSpeed);
+					motorState = rampUp;
+				}
+				else {
+					leftMotor.set_speed_sp(maxSpeedCountsLeft);
+					rightMotor.set_speed_sp(maxSpeedCountsRight);
+					motorState = hold;
+				}
+			}
+
+	}
+
+
+
+
+
+
+
+
+				else if ((position >= rampUpCount) && (position < rampDownCount)) {}
+
+
+	if (motorsRunning) {
+
+		if (goalCounts < startCounts) {
+			// going backwards
+		}
+		else {
+			// going forwards
+			if (leftMotor.position)			
+		}
+
+		int position = leftMotor.position - 
+
+		leftMotor.position();
+
+		leftMotor.set_speed_sp(ev3Base.minSpeedCountsLeft);
+		rightMotor.set_speed_sp(ev3Base.minSpeedCountsRight);
+
+	}
+}
 
 void twistCallback(const geometry_msgs::Twist& twistMessage) {
 	static double lastLinearX = 0.0;
@@ -125,13 +237,94 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 
 	ev3Base.leftMotor.set_command(ev3dev::motor::command_stop);
 	ev3Base.rightMotor.set_command(ev3dev::motor::command_stop);
+	ev3Base.leftMotor.set_stop_action(ev3dev::motor::stop_action_hold);
+	ev3Base.rightMotor.set_stop_action(ev3dev::motor::stop_action_hold);
 
 	double cmd;
 	double speed;
 
+	double countsLeft;
+	double countsRight;
+	double speedLeft;
+	double speedRight;
+	double dGoal;
+
 	if (relativeMessage.x != 0) {
-		cmd = relativeMessage.x / DistancePerCountM;
-		speed = ev3Base.relativeMoveLinearMetersPerSecond / DistancePerCountM;
+		// convert goal distance to mm 
+		dGoal = relativeMessage.x * 1000.0;
+
+		// assume left wheel is "master"
+		speedLeft = (ev3Base.relativeMoveLinearMetersPerSecond * 1000.0);
+		if (speed > ev3Base.maxSpeedMMPerSecond) {
+			speed = ev3Base.maxSpeedMMPerSecond;
+		}
+		else if (speed < -ev3Base.maxSpeedMMPerSecond) {
+			speed = -ev3Base.maxSpeedMMPerSecond;
+		}
+
+		speedRight = speedLeft * WheelDiameterRatio;
+
+		speedLeft *=  DistanceMMtoCountsLeft;
+		speedRight *=  DistanceMMtoCountsRight;
+
+		ev3Base.minSpeedCountsLeft = (int)(round(speedLeft * 0.25));
+		ev3Base.minSpeedCountsRight = (int)(round(speedRight * 0.25));
+		ev3Base.maxSpeedCountsLeft = (int)(round(speedLeft));
+		ev3Base.maxSpeedCountsRight = (int)(round(speedRight));
+
+		countsLeft = dGoal * DistanceMMtoCountsLeft;
+		countsRight = Goal * DistanceMMtoCountsRight;
+
+		ev3Base.startCounts = ev3Base.leftMotor.position();
+		ev3Base.goalCounts = ev3Base.startCounts + int(round(countsLeft)); 
+
+		if (ev3Base.startCounts > ev3Base.goalCounts) {
+			// backwards
+			ev3Base.rampUpCount = ev3Base.startCounts - ev3Base.goalCounts / 4;
+			ev3Base.rampDownCount = ev3Base.goalCounts + ev3Base.goalCounts / 4;
+		}
+		else {
+			// forwards
+			ev3Base.rampUpCount = ev3Base.startCounts + ev3Base.goalCounts / 4;
+			ev3Base.rampDownCount = ev3Base.goalCounts - ev3Base.goalCounts / 4;
+		}
+
+
+		printf("linear = [%f, %f] [%f, %f]\n", speedLeft, countsLeft, speedRight, countsRight);
+
+		//ev3Base.leftMotor.set_speed_sp(ev3Base.minSpeedCountsLeft);
+		//ev3Base.rightMotor.set_speed_sp(ev3Base.minSpeedCountsRight);
+		ev3Base.leftMotor.set_position_sp((int)round(countsLeft));
+		ev3Base.rightMotor.set_position_sp((int)round(countsRight));
+		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+		ev3Base.rightMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+		ev3Base.relativeMove = true;
+
+	}
+	// if (relativeMessage.x != 0) {
+	// 	cmd = relativeMessage.x / DistancePerCountM;
+	// 	speed = ev3Base.relativeMoveLinearMetersPerSecond / DistancePerCountM;
+	// 	double max = ev3Base.maxSpeedMetersPerSecond / DistancePerCountM;
+	// 	if (speed > max) {
+	// 		speed = max;
+	// 	}
+	// 	else if (speed < -max) {
+	// 		speed = -max;
+	// 	}
+
+	// 	printf("counts = %f\n", cmd);
+
+	// 	ev3Base.leftMotor.set_speed_sp((int)round(speed));
+	// 	ev3Base.rightMotor.set_speed_sp((int)round(speed));
+	// 	ev3Base.leftMotor.set_position_sp((int)round(cmd));
+	// 	ev3Base.rightMotor.set_position_sp((int)round(cmd));
+	// 	ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+	// 	ev3Base.rightMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
+	// }
+	else if (relativeMessage.theta != 0) {
+
+		cmd = ((relativeMessage.theta * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
+		speed = ((ev3Base.relativeMoveAngularRadiansPerSecond * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
 		double max = ev3Base.maxSpeedMetersPerSecond / DistancePerCountM;
 		if (speed > max) {
 			speed = max;
@@ -139,24 +332,9 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 		else if (speed < -max) {
 			speed = -max;
 		}
-		ev3Base.leftMotor.set_speed_sp((int)round(speed));
-		ev3Base.rightMotor.set_speed_sp((int)round(speed));
-		ev3Base.leftMotor.set_position_sp((int)round(cmd));
-		ev3Base.rightMotor.set_position_sp((int)round(cmd));
-		ev3Base.leftMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
-		ev3Base.rightMotor.set_command(ev3dev::motor::command_run_to_rel_pos);
-	}
-	else if (relativeMessage.theta != 0) {
 
-		cmd = ((relativeMessage.theta * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
-		speed = ((ev3Base.relativeMoveAngularRadiansPerSecond * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
-		double max = ev3Base.maxSpeedMetersPerSecond / 1000.0 / DistancePerCountM;
-		if (speed > max) {
-			speed = max;
-		}
-		else if (speed < -max) {
-			speed = -max;
-		}
+		printf("counts = %f\n", cmd);
+
 		ev3Base.leftMotor.set_speed_sp((int)round(speed));
 		ev3Base.rightMotor.set_speed_sp((int)round(speed));
 		ev3Base.leftMotor.set_position_sp(-(int)round(cmd));
@@ -207,6 +385,7 @@ void publishMotorStates() {
 
 	motorStates.publish(&motorStateMessage);
 }
+
 
 
 int main() {
