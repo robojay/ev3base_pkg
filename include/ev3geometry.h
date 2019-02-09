@@ -3,8 +3,8 @@
 
 #include<math.h>
 
-const double WheelSpacingMM = 157.0;  // was 127.0, 150.45
-const double WheelDiameterMM = 69.8;  // was 68.8
+const double WheelSpacingMM = 144.25;  // was 127.0, 150.45
+const double WheelDiameterMM = 68.0;  // was 68.8
 const double WheelCircumferenceMM = M_PI * WheelDiameterMM;
 
 const int CountsPerRotation = 360;

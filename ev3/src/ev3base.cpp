@@ -19,10 +19,11 @@
 #include <chrono>
 #include <ev3base_pkg/Encoder.h>
 #include <ev3base_pkg/MotorState.h>
+#include <chrono>
+#include <thread>
 #include "ev3dev.h"
 #include "ev3geometry.h"
 #include "ev3base.h"
-
 
 
 Ev3Base::Ev3Base() {
@@ -125,6 +126,8 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 
 	ev3Base.leftMotor.set_command(ev3dev::motor::command_stop);
 	ev3Base.rightMotor.set_command(ev3dev::motor::command_stop);
+	ev3Base.leftMotor.set_stop_action(ev3dev::motor::stop_action_hold);
+	ev3Base.rightMotor.set_stop_action(ev3dev::motor::stop_action_hold);
 
 	double cmd;
 	double speed;
@@ -150,7 +153,7 @@ void relativeMoveCallback(const geometry_msgs::Pose2D& relativeMessage) {
 
 		cmd = ((relativeMessage.theta * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
 		speed = ((ev3Base.relativeMoveAngularRadiansPerSecond * TurningCircumferenceMM) / (2 * M_PI)) / DistancePerCountMM;
-		double max = ev3Base.maxSpeedMetersPerSecond / 1000.0 / DistancePerCountM;
+		double max = ev3Base.maxSpeedMetersPerSecond / DistancePerCountM;
 		if (speed > max) {
 			speed = max;
 		}
@@ -180,26 +183,29 @@ void publishEncoders() {
 void publishMotorStates() {
 	motorStateMessage.header.stamp = nh.now();
 
+	std::set<std::string>::iterator i;
+	std::set<std::string> statusSet;
+
 	if (ev3Base.leftMotor.state().empty()) {
 		ev3Base.leftMotorStatus = "idle";
 	}
 	else {
-		ev3Base.leftMotorStatus = "not_idle";
-
-		//for(auto s : ev3Base.leftMotor.state()) {
-		//	ev3Base.leftMotorStatus = "foo";
-		//} 
+		ev3Base.leftMotorStatus = "";
+		statusSet = ev3Base.leftMotor.state();
+		for (i = statusSet.begin(); i != statusSet.end(); ++i) {
+			ev3Base.leftMotorStatus += *i;
+		}
 	}
 
 	if (ev3Base.rightMotor.state().empty()) {
 		ev3Base.rightMotorStatus = "idle";
 	}
 	else {
-		ev3Base.rightMotorStatus = "not_idle";
-
-		//for(auto s : ev3Base.leftMotor.state()) {
-		//	ev3Base.leftMotorStatus = "foo";
-		//} 
+		ev3Base.rightMotorStatus = "";
+		statusSet = ev3Base.rightMotor.state();
+		for (i = statusSet.begin(); i != statusSet.end(); ++i) {
+			ev3Base.rightMotorStatus += *i;
+		}
 	}
 
 	motorStateMessage.state[Left] = (char *)ev3Base.leftMotorStatus.c_str();
@@ -230,10 +236,16 @@ int main() {
 	nh.subscribe(relativeLinear);
 	nh.subscribe(relativeAngular);
 
+	while(!nh.connected()) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		nh.spinOnce();
+	}
+
 	ev3Base.leftMotor.set_command(ev3dev::motor::command_stop);
 	ev3Base.rightMotor.set_command(ev3dev::motor::command_stop);
 
-	while(1) {
+
+	while(nh.connected()) {
 		now = std::chrono::steady_clock::now();
 		if (now >= odometryTimer) {
 			odometryTimer = now + OdometryTime;
